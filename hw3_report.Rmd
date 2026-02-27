@@ -1,43 +1,7 @@
 ---
 title: "Homework 3: Algorithms for Logistic Regression"
 author: "Baijia Xu"
-date: "2026-02-23"
+date: "2026-02-27"
 output: pdf_document
 ---
 
-For a given subject in a study, we are interested in modeling $\pi_i = P(Y_i = 1|X_i = x_i)$, where $Y_i \in \{0, 1\}$. The logistic regression model takes the form
-
-<br>
-
-$$\text{logit}(\pi_i) = \log \left(\frac{\pi_i}{1-\pi_i}\right) = \log\left({\frac{P(Y_i = 1|X_i)}{1-P(Y_i = 1|X_i)}}\right) = \beta_0 + \beta_1X_{1i} + \beta_2X_{2i} + \ldots + \beta_pX_{pi}$$
-
-* $Y_1, Y_2,\ldots, Y_n \sim Bernoulli(\pi)$ 
-* PDF is $f(y_i; \pi) = \pi^{y_i}(1-\pi)^{1-y_i}$
-
-
-## Problem 1: Newton's method
-
-- Derive likelihood, gradient, and Hessian for logistic regression for an arbitrary number of predictors $p$
-
-Let $\pi_i = P(Y_i = 1|X_i)$ and $\eta_i = \beta_0+ \beta_1 X_{1i} +\beta_2 X_{2i} + ... + \beta_p X_{ip}$, the likelihood is:
-
-$$
-L(\beta) =  \prod_{i=1}^n \pi_i^{y_i}(1-\pi_i)^{1-y_i}
-$$
-
-The log-likelihood is:
-
-$$
-l(\beta) = \sum_{i=1}^n [y_ilog(\pi_i) + (1-y_i)log(1-\pi_i)]
-$$
-
-The gradient is:
-
-$$
-\Delta l(\beta) = 
-$$
-
-- What is the Newton's method update for $\beta$ for logistic regression?
-
-
-- Is logistic regression a convex optimization problem? Why or why not?

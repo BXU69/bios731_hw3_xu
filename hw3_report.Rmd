@@ -410,14 +410,10 @@ em_exp_censored <- function(y, delta, lambda0 = 0.01, tol = 1e-10, maxit = 10000
 
 fit_em <- em_exp_censored(y_obs, delta)
 
-# Closed-form MLE under right-censoring
-d <- sum(delta)
-S <- sum(y_obs)
-lambda_hat <- d / S
-
 # Wald CI from observed information: I(lambda) = d/lambda^2
-se_lambda <- lambda_hat / sqrt(d)
-ci_wald <- lambda_hat + c(-1, 1) * 1.96 * se_lambda
+d <- sum(delta)
+se_lambda <- fit_em$lambda / sqrt(d)
+ci_wald <- fit_em$lambda + c(-1, 1) * 1.96 * se_lambda
 
 # AFT comparison using exponential errors
 fit_aft <- survreg(Surv(time, status) ~ 1, data = veteran, dist = "exponential")
@@ -427,8 +423,8 @@ lambda_aft <- exp(-mu_hat)
 ci_lambda_aft <- exp(-(mu_hat + c(1, -1) * 1.96 * se_mu))
 
 summary_tbl <- data.frame(
-  quantity = c("EM lambda", "Closed-form lambda", "AFT-transformed lambda", "EM iterations", "EM time (sec)"),
-  value = c(fit_em$lambda, lambda_hat, lambda_aft, fit_em$iter, fit_em$time)
+  quantity = c("EM lambda", "AFT-transformed lambda", "EM iterations", "EM time (sec)"),
+  value = c(fit_em$lambda, lambda_aft, fit_em$iter, fit_em$time)
 )
 
 ci_tbl <- data.frame(

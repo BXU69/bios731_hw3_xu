@@ -1,7 +1,448 @@
 ---
 title: "Homework 3: Algorithms for Logistic Regression"
 author: "Baijia Xu"
-date: "2026-02-27"
+date: "2026-02-24"
 output: pdf_document
 ---
 
+GitHub repository: `https://github.com/BXU69/bios731_hw3_xu`
+
+For a given subject in a study, we are interested in modeling $\pi_i = P(Y_i = 1 | X_i = x_i)$, where $Y_i \in \{0,1\}$. The logistic regression model takes the form
+
+$$
+\text{logit}(\pi_i) = \log\left(\frac{\pi_i}{1-\pi_i}\right) = x_i^T\beta
+$$
+
+where $x_i = (1, x_{i1}, \ldots, x_{ip})^T$ and $\beta = (\beta_0, \beta_1, \ldots, \beta_p)^T$.
+
+## Problem 1: Newton's method
+
+Let $\eta_i = x_i^T\beta$ and $\pi_i = \dfrac{\exp(\eta_i)}{1+\exp(\eta_i)}$.
+
+Likelihood:
+
+$$
+L(\beta) = \prod_{i=1}^n \pi_i^{y_i}(1-\pi_i)^{1-y_i}
+$$
+
+Log-likelihood:
+
+$$
+\ell(\beta) = \sum_{i=1}^n [y_ilog(\pi_i)+(1-y_i)log(1-\pi_i)] = \sum_{i=1}^n \left[ y_i\eta_i - \log\{1+\exp(\eta_i)\} \right]
+$$
+
+Gradient:
+
+$$
+\nabla \ell(\beta) = \sum_{i=1}^n (y_i-\pi_i)x_i = X^T(y-\pi)
+$$
+
+Hessian:
+
+$$
+\nabla^2\ell(\beta) = -\sum_{i=1}^n \pi_i(1-\pi_i)x_ix_i^T = -X^T W X,
+$$
+
+where $W = \text{diag}(\pi_i(1-\pi_i))$.
+
+Newton update for maximizing $\ell(\beta)$:
+
+$$
+\beta^{(k+1)} = \beta^{(k)} - \left[\nabla^2\ell\left(\beta^{(k)}\right)\right]^{-1}\nabla\ell\left(\beta^{(k)}\right)
+$$
+
+Equivalent working form:
+
+$$
+\beta^{(k+1)} = \beta^{(k)} + \left(X^T W^{(k)} X\right)^{-1}X^T(y-\pi^{(k)}).
+$$
+
+Is logistic regression convex? If the objective is to minimize negative log-likelihood, yes: $-\ell(\beta)$ is convex since $\nabla^2(-\ell)=X^T W X \succeq 0$. Equivalently, $\ell(\beta)$ is concave.
+
+## Problem 2: MM
+
+Let $\eta_i = X_i^T\theta$ and $\eta_i^{(k)} = X_i^T\theta^{(k)}$.
+
+### (A).
+
+Define $\phi(u) = -\log(1+u)$ for $u>0$. $\phi'(u) = -\frac{1}{1+u}$. Since
+
+$$
+\phi''(u) = \frac{1}{(1+u)^2} > 0,
+$$
+
+$\phi$ is convex. Therefore, by the tangent inequality for convex functions,
+
+$$
+\phi(u) \ge \phi(u_0) + \phi'(u_0)(u-u_0).
+$$
+
+Set $u = \exp(\eta_i)$ and $u_0 = \exp(\eta_i^{(k)})$. Then
+
+$$
+-\log\{1+\exp(\eta_i)\}
+\ge
+-\log\{1+\exp(\eta_i^{(k)})\}
+-\frac{\exp(\eta_i)-\exp(\eta_i^{(k)})}{1+\exp(\eta_i^{(k)})},
+$$
+
+with equality at $\theta=\theta^{(k)}$.
+
+### (B).
+
+Write
+
+$$
+\exp(\eta_i) = \exp(\eta_i^{(k)})
+\exp\left(\sum_{j=1}^p X_{ij}(\theta_j-\theta_j^{(k)})\right).
+$$
+
+Using AM-GM with $a_j = \exp\{pX_{ij}(\theta_j-\theta_j^{(k)})\}$,
+
+$$
+\exp\left(\sum_{j=1}^p X_{ij}(\theta_j-\theta_j^{(k)})\right)
+= \prod_{j=1}^p a_j^{1/p}
+\le \frac{1}{p}\sum_{j=1}^p a_j.
+$$
+
+Substituting this into part (A), and including the linear term in the log-likelihood, gives
+
+$$
+g(\theta\mid\theta^{(k)})
+= -\frac{1}{p}\sum_{i=1}^n
+\frac{\exp(X_i^T\theta^{(k)})}{1+\exp(X_i^T\theta^{(k)})}
+\sum_{j=1}^p \exp\{pX_{ij}(\theta_j-\theta_j^{(k)})\}
++ \sum_{i=1}^n Y_i X_i^T\theta + \text{const}.
+$$
+
+### (C)
+
+Differentiate $g(\theta\mid\theta^{(k)})$ with respect to $\theta_j$ and set to zero:
+
+$$
+\Delta g
+= -\frac{1}{p}\sum_{i=1}^n
+\frac{\exp(X_i^T\theta^{(k)})}{1+\exp(X_i^T\theta^{(k)})}
+\exp(pX_{ij}(\theta_j-\theta_j^{(k)}))(pX_{ij})
++\sum_{i=1}^n Y_iX_{ij}
+$$
+
+$$
+=-\sum_{i=1}^n
+\frac{\exp(X_i^T\theta^{(k)})X_{ij}\exp(-pX_{ij}\theta_j^{(k)})}{1+\exp(X_i^T\theta^{(k)})}
+\exp(pX_{ij}\theta_j)
++\sum_{i=1}^n Y_iX_{ij} = 0,
+$$
+
+for each $j=1,\ldots,p$.
+
+## Problem 3: simulation
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(ggplot2)
+```
+
+```{r problem3-sim}
+set.seed(731)
+
+n <- 200
+beta_true <- c(1, 0.3)
+x <- rnorm(n)
+X <- cbind(1, x)
+eta <- as.vector(X %*% beta_true)
+prob <- 1 / (1 + exp(-eta))
+y <- rbinom(n, 1, prob)
+
+loglik <- function(beta, X, y) {
+  eta <- as.vector(X %*% beta)
+  sum(y * eta - log1p(exp(eta)))
+}
+
+score <- function(beta, X, y) {
+  eta <- as.vector(X %*% beta)
+  mu <- 1 / (1 + exp(-eta))
+  as.vector(t(X) %*% (y - mu))
+}
+
+hess <- function(beta, X, y) {
+  eta <- as.vector(X %*% beta)
+  mu <- 1 / (1 + exp(-eta))
+  w <- mu * (1 - mu)
+  -crossprod(X * w, X)
+}
+
+newton_logit <- function(X, y, beta0 = c(0, 0), tol = 1e-8, maxit = 200) {
+  beta <- beta0
+  t0 <- proc.time()[3]
+  for (it in 1:maxit) {
+    g <- score(beta, X, y)
+    H <- hess(beta, X, y)
+    beta_new <- beta - solve(H, g)
+    if (max(abs(beta_new - beta)) < tol) {
+      beta <- beta_new
+      break
+    }
+    beta <- beta_new
+  }
+  elapsed <- proc.time()[3] - t0
+
+  eta <- as.vector(X %*% beta)
+  mu <- 1 / (1 + exp(-eta))
+  w <- mu * (1 - mu)
+  vc <- solve(crossprod(X * w, X))
+  se <- sqrt(diag(vc))
+
+  list(beta = beta, se = se, vcov = vc, iter = it, time = elapsed)
+}
+
+mm_logit <- function(X, y, beta0 = c(0, 0), tol = 1e-8, maxit = 500, inner_maxit = 200) {
+  p_dim <- ncol(X)
+  beta <- beta0
+  t0 <- proc.time()[3]
+
+  for (it in 1:maxit) {
+    beta_k <- beta
+    eta_k <- as.vector(X %*% beta_k)
+    w <- exp(eta_k) / (1 + exp(eta_k))
+    beta_new <- beta_k
+
+    for (j in 1:p_dim) {
+      b <- beta_k[j]
+      xj <- X[, j]
+      s1 <- sum(y * xj)
+
+      for (inner in 1:inner_maxit) {
+        exp_term <- exp(p_dim * xj * (b - beta_k[j]))
+        d1 <- -sum(w * xj * exp_term) + s1
+        d2 <- -p_dim * sum(w * xj^2 * exp_term)
+        b_new <- b - d1 / d2
+        if (abs(b_new - b) < 1e-10) {
+          b <- b_new
+          break
+        }
+        b <- b_new
+      }
+      beta_new[j] <- b
+    }
+
+    if (max(abs(beta_new - beta_k)) < tol) {
+      beta <- beta_new
+      break
+    }
+    beta <- beta_new
+  }
+
+  elapsed <- proc.time()[3] - t0
+
+  eta <- as.vector(X %*% beta)
+  mu <- 1 / (1 + exp(-eta))
+  w <- mu * (1 - mu)
+  vc <- solve(crossprod(X * w, X))
+  se <- sqrt(diag(vc))
+
+  list(beta = beta, se = se, vcov = vc, iter = it, time = elapsed)
+}
+
+ci95 <- function(beta, se) {
+  cbind(low = beta - 1.96 * se, high = beta + 1.96 * se)
+}
+
+fit_newton <- newton_logit(X, y, beta0 = c(0, 0), tol = 1e-8)
+fit_mm <- mm_logit(X, y, beta0 = c(0, 0), tol = 1e-8)
+
+t_glm <- system.time(
+  fit_glm <- glm(y ~ x, family = binomial())
+)
+beta_glm <- coef(fit_glm)
+se_glm <- sqrt(diag(vcov(fit_glm)))
+
+negll <- function(beta, X, y) -loglik(beta, X, y)
+t_optim <- system.time(
+  fit_optim <- optim(c(0, 0), negll, X = X, y = y,
+                     method = "BFGS", hessian = TRUE,
+                     control = list(reltol = 1e-8, maxit = 1000))
+)
+beta_optim <- fit_optim$par
+se_optim <- sqrt(diag(solve(fit_optim$hessian)))
+
+results <- data.frame(
+  method = c("Newton", "MM", "glm", "optim_BFGS"),
+  beta0 = c(fit_newton$beta[1], fit_mm$beta[1], beta_glm[1], beta_optim[1]),
+  beta1 = c(fit_newton$beta[2], fit_mm$beta[2], beta_glm[2], beta_optim[2]),
+  iter = c(fit_newton$iter, fit_mm$iter, fit_glm$iter, fit_optim$counts["function"]),
+  time_sec = c(fit_newton$time, fit_mm$time, t_glm["elapsed"], t_optim["elapsed"])
+)
+
+ci_df <- rbind(
+  data.frame(method = "Newton", param = c("beta0", "beta1"), ci95(fit_newton$beta, fit_newton$se)),
+  data.frame(method = "MM", param = c("beta0", "beta1"), ci95(fit_mm$beta, fit_mm$se)),
+  data.frame(method = "glm", param = c("beta0", "beta1"), ci95(beta_glm, se_glm)),
+  data.frame(method = "optim_BFGS", param = c("beta0", "beta1"), ci95(beta_optim, se_optim))
+)
+
+results_disp <- results
+results_disp[sapply(results_disp, is.numeric)] <-
+  round(results_disp[sapply(results_disp, is.numeric)], 6)
+
+ci_df_disp <- ci_df
+ci_df_disp[sapply(ci_df_disp, is.numeric)] <-
+  round(ci_df_disp[sapply(ci_df_disp, is.numeric)], 6)
+rownames(ci_df_disp) <- NULL
+
+knitr::kable(results_disp, caption = "Method comparison: estimates, iterations, and time")
+knitr::kable(ci_df_disp, row.names = FALSE, caption = "95% confidence intervals for beta0 and beta1")
+```
+
+```{r problem3-plot-time}
+ggplot(results, aes(x = method, y = time_sec, fill = method)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  labs(title = "Computation time by method", x = NULL, y = "Seconds") +
+  theme_minimal(base_size = 11)
+```
+
+```{r problem3-plot-ci}
+plot_df <- merge(
+  data.frame(method = results$method, beta0 = results$beta0, beta1 = results$beta1),
+  ci_df,
+  by = "method"
+)
+plot_df$estimate <- ifelse(plot_df$param == "beta0", plot_df$beta0, plot_df$beta1)
+
+ggplot(plot_df, aes(x = estimate, y = method, color = param)) +
+  geom_point(position = position_dodge(width = 0.5), size = 2) +
+  geom_errorbarh(aes(xmin = low, xmax = high),
+                 position = position_dodge(width = 0.5), height = 0.2) +
+  labs(title = "Estimates with 95% confidence intervals", x = "Estimate", y = NULL) +
+  theme_minimal(base_size = 11)
+```
+
+All four methods produce essentially identical point estimates and confidence intervals on this simulated dataset. Newton and `glm()` converge in very few iterations, MM requires more outer iterations, and `optim(BFGS)` is similarly fast in this low-dimensional setting. The numerical agreement confirms all implementations are targeting the same MLE.
+
+## Problem 4: EM algorithm for censored exponential data
+
+Assume $T_i \sim \text{Exponential}(\lambda)$ and observed data are $(y_i,\delta_i)$ where
+$y_i = \min(T_i, c_i)$ and $\delta_i = I(T_i \le c_i)$.
+
+Complete-data log-likelihood:
+
+$$
+\ell_c(\lambda) = n\log\lambda - \lambda\sum_{i=1}^n T_i.
+$$
+
+E-step:
+
+$$
+Q(\lambda\mid\lambda^{(k)}) = n\log\lambda - \lambda\sum_{i=1}^n E[T_i\mid y_i,\delta_i,\lambda^{(k)}].
+$$
+
+Using the exponential memoryless property,
+
+$$
+E[T_i\mid y_i,\delta_i,\lambda^{(k)}] =
+\begin{cases}
+y_i, & \delta_i = 1, \\
+y_i + \frac{1}{\lambda^{(k)}}, & \delta_i = 0.
+\end{cases}
+$$
+
+M-step:
+
+$$
+\lambda^{(k+1)} = \frac{n}{\sum_{i=1}^n E[T_i\mid y_i,\delta_i,\lambda^{(k)}]}.
+$$
+
+```{r problem4-em}
+library(survival)
+
+veteran <- survival::veteran
+y_obs <- veteran$time
+delta <- veteran$status
+
+em_exp_censored <- function(y, delta, lambda0 = 0.01, tol = 1e-10, maxit = 10000) {
+  lambda <- lambda0
+  trace <- data.frame(iter = 0, lambda = lambda0)
+  t0 <- proc.time()[3]
+
+  for (it in 1:maxit) {
+    Et <- ifelse(delta == 1, y, y + 1 / lambda)
+    lambda_new <- length(y) / sum(Et)
+    trace <- rbind(trace, data.frame(iter = it, lambda = lambda_new))
+
+    if (abs(lambda_new - lambda) < tol * max(1, abs(lambda))) {
+      lambda <- lambda_new
+      break
+    }
+    lambda <- lambda_new
+  }
+
+  list(lambda = lambda, iter = it, time = proc.time()[3] - t0, trace = trace)
+}
+
+fit_em <- em_exp_censored(y_obs, delta)
+
+# Closed-form MLE under right-censoring
+d <- sum(delta)
+S <- sum(y_obs)
+lambda_hat <- d / S
+
+# Wald CI from observed information: I(lambda) = d/lambda^2
+se_lambda <- lambda_hat / sqrt(d)
+ci_wald <- lambda_hat + c(-1, 1) * 1.96 * se_lambda
+
+# AFT comparison using exponential errors
+fit_aft <- survreg(Surv(time, status) ~ 1, data = veteran, dist = "exponential")
+mu_hat <- as.numeric(coef(fit_aft)[1])
+se_mu <- sqrt(fit_aft$var[1, 1])
+lambda_aft <- exp(-mu_hat)
+ci_lambda_aft <- exp(-(mu_hat + c(1, -1) * 1.96 * se_mu))
+
+summary_tbl <- data.frame(
+  quantity = c("EM lambda", "Closed-form lambda", "AFT-transformed lambda", "EM iterations", "EM time (sec)"),
+  value = c(fit_em$lambda, lambda_hat, lambda_aft, fit_em$iter, fit_em$time)
+)
+
+ci_tbl <- data.frame(
+  method = c("EM/MLE Wald CI", "AFT transformed CI"),
+  lower = c(ci_wald[1], ci_lambda_aft[1]),
+  upper = c(ci_wald[2], ci_lambda_aft[2])
+)
+
+summary_tbl_disp <- summary_tbl
+summary_tbl_disp[sapply(summary_tbl_disp, is.numeric)] <-
+  round(summary_tbl_disp[sapply(summary_tbl_disp, is.numeric)], 6)
+
+ci_tbl_disp <- ci_tbl
+ci_tbl_disp[sapply(ci_tbl_disp, is.numeric)] <-
+  round(ci_tbl_disp[sapply(ci_tbl_disp, is.numeric)], 6)
+
+knitr::kable(summary_tbl_disp, caption = "Estimated lambda and convergence summary")
+knitr::kable(ci_tbl_disp, caption = "95% confidence intervals for lambda")
+```
+
+```{r problem4-plot}
+ggplot(fit_em$trace, aes(iter, lambda)) +
+  geom_line(color = "steelblue", linewidth = 0.8) +
+  geom_point(color = "steelblue", size = 1.4) +
+  labs(title = "EM convergence for lambda", x = "Iteration", y = expression(lambda)) +
+  theme_minimal(base_size = 11)
+```
+
+Convergence was monitored by parameter change:
+$|\lambda^{(k+1)} - \lambda^{(k)}| < \text{tol}\cdot\max(1,|\lambda^{(k)}|)$ with `tol = 1e-10`. The EM estimate matches the closed-form MLE under this model, and the AFT exponential model gives equivalent results after parameter transformation.
+
+## Extra credit (up to 5 points)
+
+### Part A: logistic regression
+
+For logistic regression, expected and observed information are equivalent:
+
+$$
+-\nabla^2\ell(\beta)=X^TWX.
+$$
+
+This Hessian depends on $\beta$ (and $X$) through $\pi_i$, but not directly on $y_i$, so its expectation equals itself.
+
+### Part B: probit regression
+
+For probit regression, expected and observed information are generally not equal in finite samples. Probit is not the canonical Bernoulli link, and the observed Hessian includes data-dependent curvature terms. The expected information averages those terms, so it differs from observed information except asymptotically or in special cases.

@@ -297,8 +297,10 @@ knitr::kable(ci_df_disp, row.names = FALSE, caption = "95% confidence intervals 
 ```{r problem3-plot-time}
 ggplot(results, aes(x = method, y = time_sec, fill = method)) +
   geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(aes(label = sprintf("%.3f", time_sec)), vjust = -0.3, size = 3.5) +
   labs(title = "Computation time by method", x = NULL, y = "Seconds") +
-  theme_minimal(base_size = 11)
+  theme_minimal(base_size = 11) +
+  expand_limits(y = max(results$time_sec) * 1.10)
 ```
 
 ```{r problem3-plot-ci}

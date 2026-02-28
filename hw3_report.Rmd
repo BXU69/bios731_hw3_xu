@@ -120,7 +120,7 @@ $$
 Differentiate $g(\theta\mid\theta^{(k)})$ with respect to $\theta_j$ and set to zero:
 
 $$
-\Delta g
+\nabla g
 = -\frac{1}{p}\sum_{i=1}^n
 \frac{\exp(X_i^T\theta^{(k)})}{1+\exp(X_i^T\theta^{(k)})}
 \exp(pX_{ij}(\theta_j-\theta_j^{(k)}))(pX_{ij})
@@ -338,7 +338,33 @@ $$
 Q(\lambda\mid\lambda^{(k)}) = n\log\lambda - \lambda\sum_{i=1}^n E[T_i\mid y_i,\delta_i,\lambda^{(k)}].
 $$
 
-Using the exponential memoryless property,
+To compute the conditional expectation in the E-step, separate cases by censoring status.
+
+- If $\delta_i=1$ (not censored), then $T_i$ is observed exactly, so $T_i=y_i$ and
+
+$$
+E[T_i\mid y_i,\delta_i=1,\lambda^{(k)}]=y_i.
+$$
+
+- If $\delta_i=0$ (right-censored), then we only know $T_i>y_i$. For an exponential variable,
+
+$$
+P(T_i>s+t\mid T_i>s)=P(T_i>t),
+$$
+
+so the residual life after time $s$ has the same distribution as a fresh $\text{Exp}(\lambda)$ variable. Equivalently,
+
+$$
+T_i\mid (T_i>y_i,\lambda^{(k)}) \overset{d}{=} y_i + Z_i, \quad Z_i\sim \text{Exp}(\lambda^{(k)}).
+$$
+
+Therefore,
+
+$$
+E[T_i\mid y_i,\delta_i=0,\lambda^{(k)}] = y_i + E[Z_i] = y_i + \frac{1}{\lambda^{(k)}}.
+$$
+
+Combining both cases,
 
 $$
 E[T_i\mid y_i,\delta_i,\lambda^{(k)}] =
@@ -353,6 +379,7 @@ M-step:
 $$
 \lambda^{(k+1)} = \frac{n}{\sum_{i=1}^n E[T_i\mid y_i,\delta_i,\lambda^{(k)}]}.
 $$
+
 
 ```{r problem4-em}
 library(survival)
@@ -431,7 +458,13 @@ ggplot(fit_em$trace, aes(iter, lambda)) +
 ```
 
 Convergence was monitored by parameter change:
-$|\lambda^{(k+1)} - \lambda^{(k)}| < \text{tol}\cdot\max(1,|\lambda^{(k)}|)$ with `tol = 1e-10`. The EM estimate matches the closed-form MLE under this model, and the AFT exponential model gives equivalent results after parameter transformation.
+$|\lambda^{(k+1)} - \lambda^{(k)}| < \text{tol}\cdot\max(1,|\lambda^{(k)}|)$ with `tol = 1e-10`.
+
+The 95% CI for $\lambda$ is obtained using a Wald approximation based on observed information for the censored exponential model: with $d=\sum_i\delta_i$, $I(\lambda)=d/\lambda^2$, so $\text{SE}(\hat\lambda)\approx \hat\lambda/\sqrt{d}$ and
+$$
+\hat\lambda \pm 1.96\,\text{SE}(\hat\lambda).
+$$
+For the AFT model, we use the normal-based CI from `survreg` on the log-time scale and transform back to $\lambda$ via $\lambda=\exp(-\mu)$.
 
 ## Extra credit (up to 5 points)
 

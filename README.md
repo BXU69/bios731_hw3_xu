@@ -45,11 +45,20 @@ tzcode source: internal
 attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base     
 
+other attached packages:
+[1] survival_3.5-7 ggplot2_3.5.2 
+
 loaded via a namespace (and not attached):
- [1] compiler_4.3.2    fastmap_1.1.1     cli_3.6.4         htmltools_0.5.8.1
- [5] tools_4.3.2       rstudioapi_0.15.0 yaml_2.3.8        rmarkdown_2.25   
- [9] knitr_1.45        xfun_0.41         digest_0.6.37     rlang_1.1.5      
-[13] evaluate_0.23    
+ [1] vctrs_0.6.5       cli_3.6.4         knitr_1.45        rlang_1.1.5      
+ [5] xfun_0.41         generics_0.1.3    labeling_0.4.3    glue_1.8.0       
+ [9] colorspace_2.1-1  htmltools_0.5.8.1 scales_1.3.0      fansi_1.0.6      
+[13] rmarkdown_2.25    grid_4.3.2        evaluate_0.23     munsell_0.5.0    
+[17] tibble_3.2.1      fastmap_1.1.1     yaml_2.3.8        lifecycle_1.0.4  
+[21] compiler_4.3.2    dplyr_1.1.4       pkgconfig_2.0.3   rstudioapi_0.15.0
+[25] lattice_0.21-9    farver_2.1.1      digest_0.6.37     R6_2.6.1         
+[29] tidyselect_1.2.1  utf8_1.2.4        splines_4.3.2     pillar_1.9.0     
+[33] magrittr_2.0.3    Matrix_1.6-1.1    withr_3.0.0       tools_4.3.2      
+[37] gtable_0.3.4    
 ```
 
 ## Reproduce the Report
